@@ -1,57 +1,43 @@
+from pydantic import MySQLDsn
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
 from app.conf.config import settings
 
-async_engine = create_async_engine(str(settings.DATABASE_URL), pool_pre_ping=True, echo=False)
 
-db_uri = str(settings.DATABASE_URL).replace('+asyncpg', '')
-engine = create_engine(db_uri, pool_pre_ping=True, echo=False)
+def get_database_uri(database: str):
+    return MySQLDsn.build(
+        scheme='mysql+pymysql',
+        host=settings.DATABASE_HOST,
+        username=settings.DATABASE_USER,
+        port=settings.DATABASE_PORT,
+        password=settings.DATABASE_PASSWORD,
+        path=database,
+    )
 
-SessionLocal = sessionmaker(
-    expire_on_commit=True,
-    autocommit=False,
-    autoflush=False,
-    # twophase=True,
-    bind=engine
-)
 
-sync_maker = sessionmaker()
-AsyncSessionLocal = async_sessionmaker(
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-    bind=async_engine,
-    # future=True,
-    sync_session_class=sync_maker
-)
+def get_async_session(database: str):
+    database_uri = str(get_database_uri(database))
+    async_engine = create_async_engine(database_uri, pool_pre_ping=True, echo=False)
 
-test_db_uri = str(settings.TEST_DATABASE_URL).replace('+asyncpg', '')
-testing_engine = create_engine(test_db_uri, pool_pre_ping=True)
+    db_uri = database_uri.replace('+asyncpg', '')
+    engine = create_engine(db_uri, pool_pre_ping=True, echo=False)
 
-test_async_engine = create_async_engine(
-    str(settings.TEST_DATABASE_URL), pool_pre_ping=True, echo=False,
-)
-TestingSessionLocal = sessionmaker(
-    expire_on_commit=True,
-    # twophase=True,
-    autoflush=False,
-    autocommit=False,
-    bind=testing_engine
-)
+    session_local = sessionmaker(
+        expire_on_commit=True,
+        autocommit=False,
+        autoflush=False,
+        # twophase=True,
+        bind=engine
+    )
 
-test_sync_maker = sessionmaker()
-
-AsyncTestingSessionLocal = async_sessionmaker(
-    class_=AsyncSession,
-    expire_on_commit=False,
-    # twophase=True,
-    autoflush=False,
-    autocommit=False,
-    bind=test_async_engine,
-    # future=True,
-    sync_session_class=test_sync_maker,
-# join_transaction_mode="create_savepoint"
-)
+    async_session_local = async_sessionmaker(
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+        bind=async_engine,
+        sync_session_class=session_local
+    )
+    return async_session_local

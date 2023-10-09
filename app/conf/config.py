@@ -40,43 +40,6 @@ class Settings(BaseSettings):
     DATABASE_PORT: int
     DATABASE_USER: str
     DATABASE_PASSWORD: str
-    DATABASE_NAME: str
-    DATABASE_URL: Optional[MySQLDsn] = None
-    TEST_DATABASE_URL: Optional[MySQLDsn] = None
-
-    @field_validator("DATABASE_URL")
-    def assemble_db_connection(cls, v: Optional[str], info):
-        if isinstance(v, str):
-            return v
-        values = info.data
-        return MySQLDsn.build(
-            scheme='mysql+pymysql',
-            host=values.get("DATABASE_HOST"),
-            username=values.get("DATABASE_USER"),
-            port=values.get("DATABASE_PORT"),
-            password=values.get("DATABASE_PASSWORD"),
-            path=f"{values.get('DATABASE_NAME') or ''}",
-        )
-
-    @field_validator("TEST_DATABASE_URL")
-    def assemble_test_db_connection(cls, v: Optional[str], info):
-        if isinstance(v, str):
-            return v
-        values = info.data
-
-        return MySQLDsn.build(
-            scheme='mysql+pymysql',
-            host=values.get("DATABASE_HOST"),
-            username=values.get("DATABASE_USER"),
-            password=values.get("DATABASE_PASSWORD"),
-            path='test',
-        )
-
-    FIRST_SUPERUSER: Optional[EmailStr] = 'admin@example.com'
-    FIRST_SUPERUSER_PASSWORD: Optional[str] = 'change_this'
-
-    TIME_ZONE: Optional[str] = "Europe/London "
-    USE_TZ: Optional[bool] = True
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", env_file_encoding='utf-8',

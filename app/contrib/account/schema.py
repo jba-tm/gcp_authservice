@@ -25,10 +25,6 @@ class Token(BaseModel):
 
 
 class TokenPayload(PydanticBaseModel):
-    user_id: int
-    iat: Optional[int] = None
-    exp: int
-    jti: str
     aud: str
 
 

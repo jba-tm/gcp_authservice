@@ -30,6 +30,9 @@ sqlalchemy = "^2.0.21"
 sqlalchemy-utils = "^0.41.1"
 tenacity = "^8.2.3"
 uvicorn = "^0.23.2"
+google-auth = "^2.23.2"
+google-auth-oauthlib = "^1.1.0"
+google-auth-httplib2 = "^0.1.1"
 
 [tool.poetry.group.dev.dependencies]
 faker = "^19.6.2"
