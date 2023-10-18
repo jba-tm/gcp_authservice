@@ -48,19 +48,16 @@ async def test_expired_auth_token_api(
         async_client: "AsyncClient",
         get_user_token_headers,
         simple_user,
-        get_user_session,
 ) -> None:
     iat = now() - timedelta(days=10)
     expire = iat + timedelta(minutes=jwt_settings.JWT_EXPIRATION_MINUTES)
 
-    user_session = await get_user_session(simple_user)
     payload = {
-        'user_id': str(simple_user.id),
-        'aud': jwt_settings.JWT_AUDIENCE_ADMIN,
+        'user_id': simple_user.id,
+        'aud': "test",
         'iat': timegm(iat.utctimetuple()),
         "exp": timegm(expire.utctimetuple()),
         'iss': jwt_settings.JWT_ISSUER,
-        'jti': user_session.id.hex
     }
     jwt_token = lazy_jwt_settings.JWT_ENCODE_HANDLER(payload)
     headers = {
@@ -72,3 +69,16 @@ async def test_expired_auth_token_api(
     )
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.asyncio
+async def test_verify_token_api(
+        async_client: "AsyncClient",
+        simple_user_token_headers,
+):
+    response = await async_client.post(
+        f'{settings.API_V1_STR}/auth/verify-token/',
+        json={"token": simple_user_token_headers.get("Authorization")}
+    )
+
+    assert response.status_code == status.HTTP_200_OK

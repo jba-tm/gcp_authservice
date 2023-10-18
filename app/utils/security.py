@@ -34,10 +34,6 @@ IMPORT_STRINGS = (
     'JWT_ENCODE_HANDLER',
     'JWT_DECODE_HANDLER',
     'JWT_PAYLOAD_HANDLER',
-    'JWT_PAYLOAD_GET_USERNAME_HANDLER',
-    'JWT_GET_USER_BY_NATURAL_KEY_HANDLER',
-    'JWT_REFRESH_EXPIRED_HANDLER',
-    'JWT_GET_REFRESH_TOKEN_HANDLER',
     'JWT_ALLOW_ANY_HANDLER',
     'JWT_ALLOW_ANY_CLASSES',
 )
@@ -70,7 +66,7 @@ def jwt_encode(payload) -> str:
 
 def jwt_decode(
         token, issuer: Optional[str] = jwt_settings.JWT_ISSUER,
-        audience: Optional[str] = jwt_settings.JWT_AUDIENCE,
+        audience: Optional[str] = None,
 ) -> dict:
     return jwt.decode(
         token=token,
@@ -167,7 +163,8 @@ lazy_jwt_settings = JWTSettings(jwt_settings.model_dump(), IMPORT_STRINGS)
 
 
 class OAuth2PasswordBearerWithCookie(OAuth2):
-    __hash__ = lambda obj: id(obj)
+    def __hash__(self):
+        return id(self)
 
     def __init__(
             self,
@@ -188,14 +185,10 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
         )
 
     async def __call__(self, request: Request) -> Optional[str]:
-        header_authorization: str = request.headers.get("Authorization")
-        cookie_authorization: str = request.cookies.get("Authorization")
-        header_scheme, header_param = get_authorization_scheme_param(
-            header_authorization
-        )
-        cookie_scheme, cookie_param = get_authorization_scheme_param(
-            cookie_authorization
-        )
+        header_authorization: str = request.headers.get(jwt_settings.JWT_AUTH_HEADER_NAME)
+        cookie_authorization: str = request.cookies.get(jwt_settings.JWT_AUTH_COOKIE_NAME)
+        header_scheme, header_param = get_authorization_scheme_param(header_authorization)
+        cookie_scheme, cookie_param = get_authorization_scheme_param(cookie_authorization)
         if header_scheme.lower() == "bearer":
             authorization = True
             scheme = header_scheme

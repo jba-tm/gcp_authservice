@@ -1,9 +1,8 @@
-from datetime import timedelta
-
 import pytest
 import asyncio
 import sys
-
+from uuid import uuid4
+from datetime import timedelta
 from typing import Optional, Callable, TYPE_CHECKING, Generator, Any, Iterator
 
 from asgi_lifespan import LifespanManager
@@ -49,9 +48,8 @@ async def async_db():
     from app.db.models import metadata
     from sqlalchemy_utils import database_exists, create_database, drop_database
 
-    test_session = get_async_session("test")
-    test_async_engine = test_session.bind
-    database_uri = test_async_engine.url.render_as_string(hide_password=False).replace('+asyncpg', '')
+    test_session, test_async_engine = get_async_session("test")
+    database_uri = test_async_engine.url.render_as_string(hide_password=False).replace('+aiomysql', '+pymysql')
     if not database_exists(database_uri):
         create_database(database_uri)
     # connect to the database
@@ -118,22 +116,12 @@ async def async_db():
 
 @pytest.fixture
 def get_user(async_db: "Session"):
-    async def func(email: Optional[str] = None, **kwargs):
+    async def func(email: Optional[str] = None):
         if not email:
             email = 'user@example.com'
         db_obj = await user_repo.first(async_db=async_db, params={'email': email})
-
         if not db_obj:
-            db_obj = await user_repo.create(
-                async_db=async_db,
-                obj_in={
-                    'email': email,
-                    'password': 'test_secret',
-                    'is_active': True,
-                    'is_superuser': False,
-                    **kwargs,
-                }
-            )
+            db_obj = await user_repo.create(async_db=async_db, obj_in={'email': email, 'password': 'test_secret'})
         return db_obj
 
     return func
@@ -144,29 +132,28 @@ async def simple_user(get_user):
     return await get_user(email='user@example.com')
 
 
-# @pytest.fixture
-# def get_user_token_headers(get_user_session: Callable) -> Callable:
-#     async def func(user: "User", expires_delta: Optional[timedelta] = None) -> dict:
-#         user_session = await get_user_session(user)
-#         payload = lazy_jwt_settings.JWT_PAYLOAD_HANDLER(
-#             {'user_id': str(user.id), 'aud': lazy_jwt_settings.JWT_AUDIENCE, "jti": user_session.id.hex},
-#             expires_delta=expires_delta
-#         )
-#         jwt_token = lazy_jwt_settings.JWT_ENCODE_HANDLER(payload)
-#         return {'Authorization': f'Bearer {jwt_token}'}
-#
-#     return func
+@pytest.fixture
+def get_user_token_headers() -> Callable:
+    async def func(user: "User", expires_delta: Optional[timedelta] = None) -> dict:
+        payload = lazy_jwt_settings.JWT_PAYLOAD_HANDLER(
+            {'user_id': str(user.id), 'aud': "test", "jti": uuid4()},
+            expires_delta=expires_delta
+        )
+        jwt_token = lazy_jwt_settings.JWT_ENCODE_HANDLER(payload)
+        return {'Authorization': f'Bearer {jwt_token}'}
+
+    return func
 
 
 @pytest.fixture
-def simple_user_token_headers(simple_user, get_user_token_headers) -> dict:
+async def simple_user_token_headers(simple_user, get_user_token_headers) -> dict:
     """
     Retrieve admin token auth header
     :param simple_user:
     :param get_user_token_headers:
     :return: dict
     """
-    return get_user_token_headers(simple_user)
+    return await get_user_token_headers(simple_user)
 
 
 @pytest.fixture(autouse=True)
@@ -187,7 +174,11 @@ async def async_client(
     async def _get_test_async_db():
         return async_db
 
+    async def _test_google_id_token_payload() -> dict:
+        return {"aud": "test"}
+
     application.dependency_overrides[dependency.get_async_db] = _get_test_async_db
+    application.dependency_overrides[dependency.google_id_token_payload] = _test_google_id_token_payload
 
     async with LifespanManager(app):
         async with AsyncClient(app=app, base_url="http://test") as _client:

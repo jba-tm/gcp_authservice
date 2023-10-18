@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     DATABASE_USER: str
     DATABASE_PASSWORD: str
 
+    TEST_DATABASE_NAME: Optional[str] = "test"
+
+    TIME_ZONE: Optional[str] = "Asia/Ashgabat"
+    USE_TZ: Optional[bool] = True
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", env_file_encoding='utf-8',
         extra="ignore"
@@ -53,13 +57,18 @@ class JWTSettings(BaseSettings):
     # JWT
     JWT_PUBLIC_KEY: Optional[str] = None
     JWT_PRIVATE_KEY: Optional[str] = None
-    JWT_ALGORITHM: Optional[str] = "RS256"
+    JWT_ALGORITHM: Optional[str] = "HS256"  # "RS256"
     JWT_VERIFY: Optional[bool] = True
     JWT_VERIFY_EXPIRATION: Optional[bool] = True
     JWT_LEEWAY: Optional[int] = 0
     JWT_ARGUMENT_NAME: Optional[str] = 'token'
-    JWT_EXPIRATION_MINUTES: Optional[int] = 60 * 24 * 30
-    JWT_AUTH_HEADER_NAME: Optional[str] = 'HTTP_AUTHORIZATION'
+    JWT_EXPIRATION_MINUTES: Optional[int] = 60 * 24
+    JWT_ALLOW_REFRESH: Optional[bool] = True
+    JWT_REFRESH_EXPIRATION_MINUTES: Optional[int] = 60 * 24 * 30 * 12
+    JWT_AUTH_HEADER_NAME: Optional[str] = 'Authorization'
+    JWT_AUTH_COOKIE_NAME: Optional[str] = 'Authorization'
+    JWT_GIT_HEADER_NAME: Optional[str] = 'X-IDToken'  # Google id token header name
+    JWT_GIT_COOKIE_NAME: Optional[str] = 'X-IDToken'  # Google id token cookie name
     JWT_AUTH_HEADER_PREFIX: str = 'Bearer'
     # Helper functions
     JWT_PASSWORD_VERIFY: Optional[str] = 'app.utils.security.verify_password'
@@ -67,8 +76,29 @@ class JWTSettings(BaseSettings):
     JWT_PAYLOAD_HANDLER: Optional[str] = 'app.utils.security.jwt_payload'
     JWT_ENCODE_HANDLER: Optional[str] = 'app.utils.security.jwt_encode'
     JWT_DECODE_HANDLER: Optional[str] = 'app.utils.security.jwt_decode'
-    JWT_AUDIENCE: Optional[str] = 'client'
     JWT_ISSUER: Optional[str] = 'backend'
+
+    model_config = SettingsConfigDict(
+        case_sensitive=True, env_file=".env", env_file_encoding='utf-8',
+        extra="ignore"
+    )
+
+
+class StructureSettings(BaseSettings):
+    # Dirs
+    BASE_DIR: Optional[str] = Path(__file__).resolve().parent.parent.parent.as_posix()
+    PROJECT_DIR: Optional[str] = Path(__file__).resolve().parent.parent.as_posix()
+    MEDIA_DIR: Optional[str] = 'media'  # Without end slash
+    MEDIA_URL: Optional[str] = '/media/'
+
+    STATIC_DIR: Optional[str] = 'static'
+    STATIC_URL: Optional[str] = '/static/'
+
+    TEMPLATES: Optional[dict] = {
+        'DIR': 'templates'
+    }
+
+    TEMP_PATH: Optional[str] = 'register-service/'
 
     model_config = SettingsConfigDict(
         case_sensitive=True, env_file=".env", env_file_encoding='utf-8',
@@ -78,3 +108,4 @@ class JWTSettings(BaseSettings):
 
 settings = Settings()
 jwt_settings = JWTSettings()
+structure_settings = StructureSettings()

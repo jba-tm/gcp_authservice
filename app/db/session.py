@@ -8,7 +8,7 @@ from app.conf.config import settings
 
 def get_database_uri(database: str):
     return MySQLDsn.build(
-        scheme='mysql+pymysql',
+        scheme='mysql+aiomysql',
         host=settings.DATABASE_HOST,
         username=settings.DATABASE_USER,
         port=settings.DATABASE_PORT,
@@ -21,7 +21,7 @@ def get_async_session(database: str):
     database_uri = str(get_database_uri(database))
     async_engine = create_async_engine(database_uri, pool_pre_ping=True, echo=False)
 
-    db_uri = database_uri.replace('+asyncpg', '')
+    db_uri = database_uri.replace('+aiomysql', '+pymysql')
     engine = create_engine(db_uri, pool_pre_ping=True, echo=False)
 
     session_local = sessionmaker(
@@ -40,4 +40,4 @@ def get_async_session(database: str):
         bind=async_engine,
         sync_session_class=session_local
     )
-    return async_session_local
+    return async_session_local, async_engine
