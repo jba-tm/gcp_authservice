@@ -1,7 +1,7 @@
 from datetime import timedelta
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic_core import ErrorDetails, ValidationError
@@ -13,7 +13,7 @@ from app.contrib.account.repository import user_repo
 from app.core.schema import IResponseBase
 from app.utils.jose import JWTError
 from app.utils.security import lazy_jwt_settings
-from app.routers.dependency import get_async_db, get_current_user, google_id_token_payload
+from app.routers.dependency import get_async_db, get_current_user, get_audience
 from app.contrib.account.schema import Token, TokenBody, TokenPayload, RefreshTokenBody, UserVisible
 
 from .models import User
@@ -40,7 +40,7 @@ def create_token(user_id: int, allow_refresh: bool, aud: str) -> dict:
 async def get_token(
         data: OAuth2PasswordRequestForm = Depends(),
         async_db: AsyncSession = Depends(get_async_db),
-        id_token_payload: dict = Depends(google_id_token_payload)
+        audience: str = Depends(get_audience)
 ) -> dict:
     """
     Get token from external api
@@ -61,7 +61,7 @@ async def get_token(
             )]
         )
 
-    result = create_token(user.id, allow_refresh=lazy_jwt_settings.JWT_ALLOW_REFRESH, aud=id_token_payload.get('aud'))
+    result = create_token(user.id, allow_refresh=lazy_jwt_settings.JWT_ALLOW_REFRESH, aud=audience)
     return result
 
 
@@ -101,14 +101,10 @@ async def new_refresh_token(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     if token_data.jti is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid refresh token")
-
     result = create_token(user_id=token_data.user_id, allow_refresh=token_in.recreate_refresh_token, aud=token_data.aud)
     return result
 
 
 @api.get("/auth/me/", response_model=UserVisible, name='me')
-async def get_me(user: User = Depends(get_current_user)):
-    return {
-        "id": user.id,
-        "email": user.email
-    }
+async def get_me(user: User = Depends(get_current_user)) -> dict:
+    return {"id": user.id, "email": user.email}

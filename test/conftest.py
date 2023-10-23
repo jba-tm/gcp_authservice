@@ -174,11 +174,11 @@ async def async_client(
     async def _get_test_async_db():
         return async_db
 
-    async def _test_google_id_token_payload() -> dict:
-        return {"aud": "test"}
+    async def _test_get_audience() -> dict:
+        return "test"
 
     application.dependency_overrides[dependency.get_async_db] = _get_test_async_db
-    application.dependency_overrides[dependency.google_id_token_payload] = _test_google_id_token_payload
+    application.dependency_overrides[dependency.get_audience] = _test_get_audience
 
     async with LifespanManager(app):
         async with AsyncClient(app=app, base_url="http://test") as _client:

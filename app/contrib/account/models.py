@@ -5,5 +5,6 @@ from app.db.models import Base
 
 
 class User(Base):
-    email: Mapped[str] = mapped_column(sa.String(255), unique=True, nullable=False, index=True)
-    hashed_password: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    __tablename__ = "users"
+    email: Mapped[str] = mapped_column(sa.String(254), unique=True, nullable=False, index=True)
+    hashed_password: Mapped[str] = mapped_column(sa.String(254), nullable=False)

@@ -54,7 +54,7 @@ async def test_expired_auth_token_api(
 
     payload = {
         'user_id': simple_user.id,
-        'aud': "test",
+        'aud': "test" if settings.MULTI_TENANCY_DB else lazy_jwt_settings.JWT_AUDIENCE,
         'iat': timegm(iat.utctimetuple()),
         "exp": timegm(expire.utctimetuple()),
         'iss': jwt_settings.JWT_ISSUER,
@@ -72,10 +72,7 @@ async def test_expired_auth_token_api(
 
 
 @pytest.mark.asyncio
-async def test_verify_token_api(
-        async_client: "AsyncClient",
-        simple_user_token_headers,
-):
+async def test_verify_token_api(async_client: "AsyncClient", simple_user_token_headers):
     response = await async_client.post(
         f'{settings.API_V1_STR}/auth/verify-token/',
         json={"token": simple_user_token_headers.get("Authorization")}

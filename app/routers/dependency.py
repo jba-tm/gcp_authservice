@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Generator, Optional
 
 from fastapi import Depends, Request, HTTPException
 from fastapi.security.utils import get_authorization_scheme_param
@@ -43,20 +43,28 @@ async def get_google_id_token(request: Request):
         param = None
 
     if not authorization or scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Invalid Google ID token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        if settings.MULTI_TENANCY_DB:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Invalid Google ID token",
+                headers={f"WWW-{lazy_jwt_settings.JWT_GIT_HEADER_NAME}": "Bearer"},
+            )
+        else:
+            return None
     return param
 
 
-async def google_id_token_payload(token: str = Depends(get_google_id_token)):
+async def get_audience(token: str = Depends(get_google_id_token)) -> Optional[str]:
+    if not settings.MULTI_TENANCY_DB:
+        return lazy_jwt_settings.JWT_AUDIENCE
     try:
         id_info = id_token.verify_oauth2_token(token, GoogleRequest())
     except GoogleAuthError as e:
         raise HTTPInvalidToken(detail=str(e))
-    return id_info
+    audience = id_info.get('aud')
+    if not audience:
+        raise HTTPInvalidToken(detail="Invalid token audience")
+    return audience
 
 
 async def get_token_payload(
@@ -70,8 +78,8 @@ async def get_token_payload(
     return token_data
 
 
-async def get_async_db(id_token_payload: dict = Depends(google_id_token_payload)) -> Generator:
-    async_session_local, _ = get_async_session(id_token_payload.get("aud"))
+async def get_async_db(audience: str = Depends(get_audience)) -> Generator:
+    async_session_local, _ = get_async_session(audience)
     try:
         async with async_session_local() as session:
             yield session
@@ -84,7 +92,7 @@ async def get_async_db(id_token_payload: dict = Depends(google_id_token_payload)
 async def get_current_user(
         token_payload: TokenPayload = Depends(get_token_payload),
         async_db: AsyncSession = Depends(get_async_db),
-) -> dict:
+) -> User:
     """
     Get user by token
     :param token_payload:

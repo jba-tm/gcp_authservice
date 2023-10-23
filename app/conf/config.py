@@ -1,6 +1,6 @@
 from typing import List, Optional, Union, Dict, Any
 from pathlib import Path
-from pydantic import AnyHttpUrl, EmailStr, field_validator, MySQLDsn
+from pydantic import AnyHttpUrl, EmailStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     DATABASE_PORT: int
     DATABASE_USER: str
     DATABASE_PASSWORD: str
+    MULTI_TENANCY_DB: Optional[bool] = True
+    DATABASE_NAME: Optional[str] = None
+
+    @field_validator("DATABASE_NAME")
+    def validate_database_name(cls, v: Optional[str], info):
+        data = info.data
+        multi_tenancy_db = data.get('MULTI_TENANCY_DB')
+        if not multi_tenancy_db and not v:
+            raise ValueError("When IS_MULTI_TENANT_DB is false DATABASE_NAME required")
 
     TEST_DATABASE_NAME: Optional[str] = "test"
 
@@ -70,6 +79,8 @@ class JWTSettings(BaseSettings):
     JWT_GIT_HEADER_NAME: Optional[str] = 'X-IDToken'  # Google id token header name
     JWT_GIT_COOKIE_NAME: Optional[str] = 'X-IDToken'  # Google id token cookie name
     JWT_AUTH_HEADER_PREFIX: str = 'Bearer'
+    JWT_AUDIENCE: Optional[str] = 'client'
+
     # Helper functions
     JWT_PASSWORD_VERIFY: Optional[str] = 'app.utils.security.verify_password'
     JWT_PASSWORD_HANDLER: Optional[str] = 'app.utils.security.get_password_hash'
